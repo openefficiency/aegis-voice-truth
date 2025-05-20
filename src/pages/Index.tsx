@@ -1,3 +1,4 @@
+
 // Main landing page - includes CTA, Voice Widget, Dashboard access, and creds.
 
 import React, { useRef, useState } from "react";
@@ -5,6 +6,8 @@ import VoiceReportWidget from "@/components/VoiceReportWidget";
 import EthicsOfficerDashboard from "./dashboard/EthicsOfficerDashboard";
 import InvestigatorDashboard from "./dashboard/InvestigatorDashboard";
 import { toast } from "@/hooks/use-toast";
+import FollowupModal from "@/components/FollowupModal";
+import { Dialog } from "@/components/ui/dialog";
 
 const ETHICS_USERNAME = "ethics@aegiswhistle.com";
 const ETHICS_PASSWORD = "Ethics123!";
@@ -13,7 +16,6 @@ const INVESTIGATOR_PASSWORD = "Investigate456!";
 
 // Simple in-memory complaints store (reset on reload)
 const getInitialComplaints = () => [
-  // Pre-populate with a sample complaint
   {
     id: 1,
     summary: "The procurement process is being bypassed in certain departments.",
@@ -28,6 +30,7 @@ const getInitialComplaints = () => [
       { action: "Complaint submitted", timestamp: "2024-05-20 10:29" },
     ],
     rewarded: false,
+    ackCode: "1",
   }
 ];
 
@@ -35,29 +38,39 @@ export default function Index() {
   const [complaints, setComplaints] = useState(getInitialComplaints());
   const [role, setRole] = useState<"officer" | "investigator">("officer");
   const [currentUsername, setCurrentUsername] = useState("");
+  const [showFollowup, setShowFollowup] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
+  const [loginRole, setLoginRole] = useState<"officer" | "investigator">("officer");
+  const [ackCode, setAckCode] = useState(""); // Store Ack Code to show
   const reportSectionRef = useRef<HTMLDivElement>(null);
 
-  // Simulate report creation
+  // Simulate report creation, now with ackCode
   function handleComplaintSubmitted(complaint) {
-    setComplaints((prev) => [
-      ...prev,
-      {
-        id: prev.length + 1,
-        summary: complaint.summary ?? "Test voice complaint summary",
-        transcript: complaint.transcript || "",
-        status: "open",
-        category: complaint.category || "whistleblowing",
-        assignedTo: "",
-        timestamp: new Date().toISOString().slice(0, 16).replace("T", " "),
-        audioUrl: complaint.audioUrl || "",
-        notes: "",
-        rewarded: false,
-        auditTrail: [
-          { action: "Complaint submitted", timestamp: new Date().toISOString().slice(0, 16).replace("T", " ") },
-        ],
-      }
-    ]);
-    toast({ title: "Complaint Received!", description: "Your voice report was logged successfully." });
+    const newId = complaints.length ? complaints[complaints.length - 1].id + 1 : 1;
+    const ack = (
+      Math.random().toString(36).substring(2, 8).toUpperCase() +
+      (1000 + Math.floor(Math.random() * 9000))
+    );
+
+    const newComplaint = {
+      id: newId,
+      summary: complaint.summary ?? "Test voice complaint summary",
+      transcript: complaint.transcript || "",
+      status: "open",
+      category: complaint.category || "whistleblowing",
+      assignedTo: "",
+      timestamp: new Date().toISOString().slice(0, 16).replace("T", " "),
+      audioUrl: complaint.audioUrl || "",
+      notes: "",
+      rewarded: false,
+      auditTrail: [
+        { action: "Complaint submitted", timestamp: new Date().toISOString().slice(0, 16).replace("T", " ") },
+      ],
+      ackCode: ack,
+    };
+    setComplaints(prev => [...prev, newComplaint]);
+    setAckCode(ack);
+    toast({ title: "Complaint Received!", description: `Your report was logged. Ack Code: ${ack}` });
   }
 
   // Officer actions
@@ -111,58 +124,106 @@ export default function Index() {
     reportSectionRef.current?.scrollIntoView({ behavior: "smooth" });
   }
 
-  // Authentication logic for demo (credential check)
-  function handleLogin(e) {
+  // Show login modal and change role
+  function handleLoginSubmit(e) {
     e.preventDefault();
     const form = e.target;
-    const user = form.role.value === "officer" ? ETHICS_USERNAME : INVESTIGATOR_USERNAME;
-    const pass = form.role.value === "officer" ? ETHICS_PASSWORD : INVESTIGATOR_PASSWORD;
-    if (form.username.value === user && form.password.value === pass) {
-      setRole(form.role.value);
+    const user =
+      loginRole === "officer" ? ETHICS_USERNAME : INVESTIGATOR_USERNAME;
+    const pass =
+      loginRole === "officer" ? ETHICS_PASSWORD : INVESTIGATOR_PASSWORD;
+    if (
+      form.username.value === user &&
+      form.password.value === pass
+    ) {
+      setRole(loginRole);
       setCurrentUsername(form.username.value);
-      toast({ title: "Logged in!", description: `Logged in as ${form.role.value === "officer" ? "Ethics Officer" : "Investigator"}` });
+      setShowLogin(false);
+      toast({ title: "Logged in!", description: `Logged in as ${loginRole === "officer" ? "Ethics Officer" : "Investigator"}` });
     } else {
       toast({ title: "Login failed", description: "Invalid credentials", variant: "destructive" });
     }
   }
 
+  // Navigation buttons
+  function triggerLogin(r) {
+    setLoginRole(r);
+    setShowLogin(true);
+  }
+
   return (
     <div className="bg-gray-50 min-h-screen">
-      <header className="py-8 px-4 max-w-4xl mx-auto flex flex-col items-center gap-2">
-        <h1 className="text-3xl md:text-4xl font-extrabold bg-gradient-to-r from-blue-700 to-blue-400 text-transparent bg-clip-text mb-2">
-          Aegis Whistle — Voice-Driven Whistleblower Platform
-        </h1>
-        <div className="text-lg text-gray-500 font-medium">Empower voices. Protect truth. Reward integrity.</div>
-        <button
-          className="mt-4 bg-blue-600 text-white font-bold py-3 px-8 rounded-lg shadow hover:bg-blue-700 transition"
-          onClick={handleMakeReport}>
-          Make a Report
-        </button>
+      {/* Top nav/header */}
+      <header className="flex items-center gap-4 justify-between p-4 pb-2 max-w-5xl mx-auto">
+        <div className="flex items-center gap-3">
+          <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-blue-700 to-blue-400 text-transparent bg-clip-text">Aegis Whistle</span>
+          <span className="ml-2 text-sm text-gray-400 hidden md:block">Voice-Driven Whistleblower Platform</span>
+        </div>
+        <div className="flex gap-2 items-center flex-1 justify-end">
+          <button
+            className="text-blue-600 border border-blue-600 font-semibold rounded px-3 py-1 hover:bg-blue-50"
+            onClick={() => triggerLogin("officer")}
+          >
+            Ethics Officer Login
+          </button>
+          <button
+            className="text-blue-600 border border-blue-600 font-semibold rounded px-3 py-1 hover:bg-blue-50"
+            onClick={() => triggerLogin("investigator")}
+          >
+            Investigator Login
+          </button>
+          <button
+            className="ml-2 px-3 py-1 rounded font-semibold bg-gray-100 text-blue-600 border border-blue-600 hover:bg-blue-50"
+            onClick={() => setShowFollowup(true)}
+          >
+            Followup
+          </button>
+        </div>
       </header>
-      <main className="max-w-4xl mx-auto px-2">
+
+      {showLogin && (
+        <Dialog open={showLogin} onOpenChange={setShowLogin}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+            <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm">
+              <h2 className="font-bold text-lg mb-2">Login as {loginRole === "officer" ? "Ethics Officer" : "Investigator"}</h2>
+              <form className="flex flex-col gap-3" onSubmit={handleLoginSubmit}>
+                <input name="username" placeholder="Username" className="border px-2 py-1 rounded" required defaultValue={loginRole==="officer"?ETHICS_USERNAME:INVESTIGATOR_USERNAME} />
+                <input name="password" type="password" placeholder="Password" className="border px-2 py-1 rounded" required defaultValue={loginRole==="officer"?ETHICS_PASSWORD:INVESTIGATOR_PASSWORD}/>
+                <div className="flex justify-end gap-2 mt-2">
+                  <button type="button" className="text-gray-400" onClick={()=>setShowLogin(false)}>Cancel</button>
+                  <button type="submit" className="bg-blue-500 text-white rounded px-4 py-1 font-semibold">Login</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </Dialog>
+      )}
+
+      <main className="max-w-4xl mx-auto px-2 pb-16">
+        <section className="mt-4 mb-2 flex flex-col items-center">
+          <button
+            className="bg-blue-600 text-white font-bold py-3 px-8 rounded-lg shadow hover:bg-blue-700 transition"
+            onClick={handleMakeReport}
+          >
+            Make a Report
+          </button>
+        </section>
         <section className="my-8" ref={reportSectionRef}>
           <h2 className="text-2xl font-bold text-gray-800 mb-3">🗣️ Report a Concern</h2>
           <VoiceReportWidget onComplaintSubmitted={handleComplaintSubmitted} />
+          {ackCode && (
+            <div className="mt-4 bg-green-50 border border-green-200 rounded-xl p-4 flex flex-col items-center">
+              <span className="text-green-700 font-bold">
+                Your Report Acknowledgement Code:
+              </span>
+              <span className="text-lg font-mono tracking-wide text-green-600">{ackCode}</span>
+              <span className="text-xs text-gray-400 mt-2">
+                Please save this code to check your complaint status or reward follow-up.
+              </span>
+            </div>
+          )}
         </section>
         <section className="my-8">
-          <h2 className="text-2xl font-bold mb-4 text-gray-800 flex items-center gap-2">
-            Ethics Officer Dashboard / Investigator Workspace
-          </h2>
-          <div className="flex items-center gap-4 mb-4 bg-white shadow rounded-lg p-3">
-            <form className="flex items-center gap-4" onSubmit={handleLogin}>
-              <select name="role" defaultValue={role} className="border px-2 py-1 rounded bg-gray-50">
-                <option value="officer">Ethics Officer</option>
-                <option value="investigator">Investigator</option>
-              </select>
-              <input name="username" placeholder="Username" className="border px-2 py-1 rounded" required />
-              <input name="password" type="password" placeholder="Password" className="border px-2 py-1 rounded" required />
-              <button className="bg-blue-500 text-white rounded px-4 py-1 font-semibold">Login</button>
-            </form>
-            <div className="ml-4 text-xs flex flex-col text-gray-400">
-              <span>Officer: {ETHICS_USERNAME} / <b>Ethics123!</b></span>
-              <span>Investigator: {INVESTIGATOR_USERNAME} / <b>Investigate456!</b></span>
-            </div>
-          </div>
           {role === "officer" ? (
             <EthicsOfficerDashboard
               complaints={complaints}
@@ -190,6 +251,14 @@ export default function Index() {
           )}
         </section>
       </main>
+
+      {showFollowup && (
+        <FollowupModal
+          open={showFollowup}
+          onClose={()=>setShowFollowup(false)}
+          complaints={complaints}
+        />
+      )}
     </div>
   );
 }
