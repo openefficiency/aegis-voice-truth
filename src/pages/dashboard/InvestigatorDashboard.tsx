@@ -1,4 +1,3 @@
-
 import React from "react";
 import ComplaintList from "./ComplaintList";
 import StatCard from "@/components/StatCard";
@@ -9,7 +8,17 @@ const dummyInvestigator = {
   password: "Investigate456!",
 };
 
-export default function InvestigatorDashboard({ complaints, currentUsername, onUpdateNote }) {
+export default function InvestigatorDashboard({
+  complaints,
+  showControls = false,
+  role,
+  onUpdateNote,
+  currentUsername,
+  assignCase,
+  onResolve,
+  onEscalate,
+  onReward
+}) {
   const myCases = complaints.filter(
     c => (c.assignedTo && c.assignedTo === currentUsername)
   );
@@ -22,10 +31,14 @@ export default function InvestigatorDashboard({ complaints, currentUsername, onU
       </div>
       <ComplaintList
         complaints={myCases}
-        showControls={false}
-        role="investigator"
+        assignCase={assignCase}
+        showControls={showControls}
+        role={role}
         onUpdateNote={onUpdateNote}
         currentUsername={currentUsername}
+        onResolve={onResolve}
+        onEscalate={onEscalate}
+        onReward={onReward}
       />
     </div>
   );

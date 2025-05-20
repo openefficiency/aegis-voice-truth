@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import StatCard from "@/components/StatCard";
 import ComplaintList from "./ComplaintList";
@@ -10,7 +9,17 @@ const dummyOfficer = {
   password: "Ethics123!",
 };
 
-export default function EthicsOfficerDashboard({ complaints, assignCase, onResolve, onEscalate, onReward }) {
+export default function EthicsOfficerDashboard({
+  complaints,
+  assignCase,
+  showControls = true,
+  onResolve,
+  onEscalate,
+  onReward,
+  role,
+  currentUsername,
+  onUpdateNote
+}) {
   return (
     <div className="flex flex-col gap-8">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -21,10 +30,13 @@ export default function EthicsOfficerDashboard({ complaints, assignCase, onResol
       <ComplaintList
         complaints={complaints}
         assignCase={assignCase}
-        showControls
+        showControls={showControls}
         onResolve={onResolve}
         onEscalate={onEscalate}
         onReward={onReward}
+        role={role}
+        currentUsername={currentUsername}
+        onUpdateNote={onUpdateNote}
       />
     </div>
   );

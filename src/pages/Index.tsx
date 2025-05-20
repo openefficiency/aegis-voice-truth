@@ -1,4 +1,3 @@
-
 // Main landing page - includes CTA, Voice Widget, Dashboard access, and creds.
 
 import React, { useRef, useState } from "react";
@@ -52,7 +51,7 @@ export default function Index() {
         timestamp: new Date().toISOString().slice(0, 16).replace("T", " "),
         audioUrl: complaint.audioUrl || "",
         notes: "",
-        reward: false,
+        rewarded: false,
         auditTrail: [
           { action: "Complaint submitted", timestamp: new Date().toISOString().slice(0, 16).replace("T", " ") },
         ],
@@ -168,15 +167,25 @@ export default function Index() {
             <EthicsOfficerDashboard
               complaints={complaints}
               assignCase={assignCase}
+              showControls={true}
               onResolve={onResolve}
               onEscalate={onEscalate}
               onReward={onReward}
+              role={role}
+              currentUsername={currentUsername}
+              onUpdateNote={onUpdateNote}
             />
           ) : (
             <InvestigatorDashboard
               complaints={complaints}
-              currentUsername={currentUsername}
+              showControls={false}
+              role={role}
               onUpdateNote={onUpdateNote}
+              currentUsername={currentUsername}
+              assignCase={() => {}}
+              onResolve={() => {}}
+              onEscalate={() => {}}
+              onReward={() => {}}
             />
           )}
         </section>
