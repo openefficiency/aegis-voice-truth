@@ -1,4 +1,3 @@
-
 // Main landing page - includes CTA, Voice Widget, Dashboard access, and creds.
 
 import React, { useRef, useState } from "react";
@@ -160,6 +159,12 @@ export default function Index() {
           <span className="ml-2 text-sm text-gray-400 hidden md:block">Voice-Driven Whistleblower Platform</span>
         </div>
         <div className="flex gap-2 items-center flex-1 justify-end">
+          <a
+            href="/auth"
+            className="text-blue-600 border border-blue-600 font-semibold rounded px-3 py-1 hover:bg-blue-50"
+          >
+            Login / Signup
+          </a>
           <button
             className="text-blue-600 border border-blue-600 font-semibold rounded px-3 py-1 hover:bg-blue-50"
             onClick={() => triggerLogin("officer")}
