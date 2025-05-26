@@ -1,12 +1,13 @@
-// Main landing page - includes CTA, Voice Widget, Dashboard access, and creds.
+// Main landing page — streamlined for anonymous report via VAPI (or write), stats at bottom, Team Aegis/Followup in header.
 
 import React, { useRef, useState } from "react";
 import VoiceReportWidget from "@/components/VoiceReportWidget";
-import EthicsOfficerDashboard from "./dashboard/EthicsOfficerDashboard";
-import InvestigatorDashboard from "./dashboard/InvestigatorDashboard";
-import { toast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import WriteReportModal from "@/components/WriteReportModal";
+import DashboardStats from "@/components/DashboardStats";
 import FollowupModal from "@/components/FollowupModal";
 import { Dialog } from "@/components/ui/dialog";
+import { toast } from "@/hooks/use-toast";
 
 const ETHICS_USERNAME = "ethics@aegiswhistle.com";
 const ETHICS_PASSWORD = "Ethics123!";
@@ -34,42 +35,43 @@ const getInitialComplaints = () => [
 ];
 
 export default function Index() {
-  const [complaints, setComplaints] = useState(getInitialComplaints());
+  const [showWrite, setShowWrite] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
+  const [showFollowup, setShowFollowup] = useState(false);
   const [role, setRole] = useState<"officer" | "investigator">("officer");
   const [currentUsername, setCurrentUsername] = useState("");
-  const [showFollowup, setShowFollowup] = useState(false);
-  const [showLogin, setShowLogin] = useState(false);
   const [loginRole, setLoginRole] = useState<"officer" | "investigator">("officer");
-  const [ackCode, setAckCode] = useState(""); // Store Ack Code to show
+
+  // In-memory complaints for demo (simulate backend)
+  const [complaints, setComplaints] = useState(getInitialComplaints());
+  const [ackCode, setAckCode] = useState(""); // store code after submit
   const reportSectionRef = useRef<HTMLDivElement>(null);
 
-  // Simulate report creation, now with ackCode
-  function handleComplaintSubmitted(complaint) {
+  // Called by both voice and write flows
+  function handleComplaintSubmitted({ summary, transcript, category, audioUrl }) {
     const newId = complaints.length ? complaints[complaints.length - 1].id + 1 : 1;
+    // New 10-char code (VAPI is required to generate and return, but fallback here)
     const ack = (
-      Math.random().toString(36).substring(2, 8).toUpperCase() +
-      (1000 + Math.floor(Math.random() * 9000))
-    );
-
+      Math.random().toString(36).substring(2, 7).toUpperCase() +
+      Math.random().toString(36).substring(2, 7).toUpperCase()
+    ).substring(0,10);
     const newComplaint = {
       id: newId,
-      summary: complaint.summary ?? "Test voice complaint summary",
-      transcript: complaint.transcript || "",
+      summary: summary ?? "Voice complaint summary",
+      transcript: transcript || "",
       status: "open",
-      category: complaint.category || "whistleblowing",
-      assignedTo: "",
+      category: category || "general",
       timestamp: new Date().toISOString().slice(0, 16).replace("T", " "),
-      audioUrl: complaint.audioUrl || "",
-      notes: "",
-      rewarded: false,
-      auditTrail: [
-        { action: "Complaint submitted", timestamp: new Date().toISOString().slice(0, 16).replace("T", " ") },
-      ],
+      audioUrl: audioUrl || "",
       ackCode: ack,
+      rewarded: false,
     };
-    setComplaints(prev => [...prev, newComplaint]);
+    setComplaints((prev) => [...prev, newComplaint]);
     setAckCode(ack);
-    toast({ title: "Complaint Received!", description: `Your report was logged. Ack Code: ${ack}` });
+    toast({
+      title: "Report received!",
+      description: `Your Acknowledgement Code: ${ack}`,
+    });
   }
 
   // Officer actions
@@ -123,74 +125,103 @@ export default function Index() {
     reportSectionRef.current?.scrollIntoView({ behavior: "smooth" });
   }
 
-  // Show login modal and change role
-  function handleLoginSubmit(e) {
-    e.preventDefault();
-    const form = e.target;
-    const user =
-      loginRole === "officer" ? ETHICS_USERNAME : INVESTIGATOR_USERNAME;
-    const pass =
-      loginRole === "officer" ? ETHICS_PASSWORD : INVESTIGATOR_PASSWORD;
-    if (
-      form.username.value === user &&
-      form.password.value === pass
-    ) {
-      setRole(loginRole);
-      setCurrentUsername(form.username.value);
-      setShowLogin(false);
-      toast({ title: "Logged in!", description: `Logged in as ${loginRole === "officer" ? "Ethics Officer" : "Investigator"}` });
-    } else {
-      toast({ title: "Login failed", description: "Invalid credentials", variant: "destructive" });
+    // Show login modal and change role
+    function handleLoginSubmit(e) {
+      e.preventDefault();
+      const form = e.target;
+      const user =
+        loginRole === "officer" ? ETHICS_USERNAME : INVESTIGATOR_USERNAME;
+      const pass =
+        loginRole === "officer" ? ETHICS_PASSWORD : INVESTIGATOR_PASSWORD;
+      if (
+        form.username.value === user &&
+        form.password.value === pass
+      ) {
+        setRole(loginRole);
+        setCurrentUsername(form.username.value);
+        setShowLogin(false);
+        toast({ title: "Logged in!", description: `Logged in as ${loginRole === "officer" ? "Ethics Officer" : "Investigator"}` });
+      } else {
+        toast({ title: "Login failed", description: "Invalid credentials", variant: "destructive" });
+      }
     }
-  }
 
-  // Navigation buttons
-  function triggerLogin(r) {
-    setLoginRole(r);
-    setShowLogin(true);
-  }
+    // Navigation buttons
+    function triggerLogin(r) {
+      setLoginRole(r);
+      setShowLogin(true);
+    }
 
   return (
-    <div className="bg-gray-50 min-h-screen">
-      {/* Top nav/header */}
-      <header className="flex items-center gap-4 justify-between p-4 pb-2 max-w-5xl mx-auto">
-        <div className="flex items-center gap-3">
-          <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-blue-700 to-blue-400 text-transparent bg-clip-text">Aegis Whistle</span>
-          <span className="ml-2 text-sm text-gray-400 hidden md:block">Voice-Driven Whistleblower Platform</span>
+    <div className="bg-gray-50 min-h-screen flex flex-col">
+      {/* Header */}
+      <header className="flex items-center justify-between p-4 max-w-4xl mx-auto w-full">
+        <div className="flex items-center gap-2">
+          <span className="font-bold text-xl bg-gradient-to-r from-blue-900 to-blue-500 text-transparent bg-clip-text">
+            <img src="/logo.svg" alt="Aegis" className="h-8 w-8 inline-block mr-2" />
+            Aegis Whistle
+          </span>
         </div>
-        <div className="flex gap-2 items-center flex-1 justify-end">
-          <a
-            href="/auth"
-            className="text-blue-600 border border-blue-600 font-semibold rounded px-3 py-1 hover:bg-blue-50"
-          >
-            Login / Signup
-          </a>
-          <button
-            className="text-blue-600 border border-blue-600 font-semibold rounded px-3 py-1 hover:bg-blue-50"
-            onClick={() => triggerLogin("officer")}
-          >
-            Ethics Officer Login
-          </button>
-          <button
-            className="text-blue-600 border border-blue-600 font-semibold rounded px-3 py-1 hover:bg-blue-50"
-            onClick={() => triggerLogin("investigator")}
-          >
-            Investigator Login
-          </button>
-          <button
-            className="ml-2 px-3 py-1 rounded font-semibold bg-gray-100 text-blue-600 border border-blue-600 hover:bg-blue-50"
-            onClick={() => setShowFollowup(true)}
-          >
-            Followup
-          </button>
+        <div className="flex gap-2 items-center">
+          <Button variant="outline" onClick={() => setShowLogin(true)}>Team Aegis Login</Button>
+          <Button variant="default" onClick={() => setShowFollowup(true)}>Followup</Button>
         </div>
       </header>
 
+      {/* Main: Speak-up and "write" alt */}
+      <main className="flex-1 flex flex-col justify-center items-center px-2">
+        <section className="max-w-lg w-full my-8">
+          <h1 className="text-2xl font-bold text-center mb-4 text-blue-900">Whistleblowing. Made Effortless.</h1>
+          <VoiceReportWidget onComplaintSubmitted={handleComplaintSubmitted} />
+          <div className="relative flex items-center my-4">
+            <div className="flex-grow border-t border-gray-300" />
+            <span className="mx-3 text-gray-500 bg-gray-50 px-2">or</span>
+            <div className="flex-grow border-t border-gray-300" />
+          </div>
+          <Button variant="secondary" className="w-full" onClick={() => setShowWrite(true)}>
+            Submit by Writing Instead
+          </Button>
+        </section>
+        {ackCode && (
+          <div className="mt-4 bg-green-50 border border-green-200 rounded-xl p-4 flex flex-col items-center">
+            <span className="text-green-700 font-bold">Your Report Code:</span>
+            <span className="text-lg font-mono tracking-wide text-green-600">{ackCode}</span>
+            <span className="text-xs text-gray-400 mt-2">Save this code to check status or reward updates!</span>
+          </div>
+        )}
+      </main>
+
+      {/* Dashboard stat cards at bottom */}
+      <div className="max-w-3xl mx-auto w-full mb-4">
+        <DashboardStats complaints={complaints} />
+      </div>
+
+      {/* Followup modal */}
+      {showFollowup && (
+        <FollowupModal
+          open={showFollowup}
+          onClose={() => setShowFollowup(false)}
+          complaints={complaints}
+        />
+      )}
+
+      {/* Write report modal */}
+      {showWrite && (
+        <WriteReportModal
+          open={showWrite}
+          onClose={() => setShowWrite(false)}
+          onSubmit={handleComplaintSubmitted}
+        />
+      )}
+
+      {/* Login modal placeholder */}
       {showLogin && (
         <Dialog open={showLogin} onOpenChange={setShowLogin}>
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
             <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm">
-              <h2 className="font-bold text-lg mb-2">Login as {loginRole === "officer" ? "Ethics Officer" : "Investigator"}</h2>
+              <h2 className="font-bold text-lg mb-2">Login to Team Aegis</h2>
+              <div className="mb-4 text-sm text-gray-500">Officers and Investigators: Please enter your credentials to access the Dashboard.</div>
+              {/* Mocked login: direct dashboard logic to be improved */}
               <form className="flex flex-col gap-3" onSubmit={handleLoginSubmit}>
                 <input name="username" placeholder="Username" className="border px-2 py-1 rounded" required defaultValue={loginRole==="officer"?ETHICS_USERNAME:INVESTIGATOR_USERNAME} />
                 <input name="password" type="password" placeholder="Password" className="border px-2 py-1 rounded" required defaultValue={loginRole==="officer"?ETHICS_PASSWORD:INVESTIGATOR_PASSWORD}/>
@@ -202,67 +233,6 @@ export default function Index() {
             </div>
           </div>
         </Dialog>
-      )}
-
-      <main className="max-w-4xl mx-auto px-2 pb-16">
-        <section className="mt-4 mb-2 flex flex-col items-center">
-          <button
-            className="bg-blue-600 text-white font-bold py-3 px-8 rounded-lg shadow hover:bg-blue-700 transition"
-            onClick={handleMakeReport}
-          >
-            Make a Report
-          </button>
-        </section>
-        <section className="my-8" ref={reportSectionRef}>
-          <h2 className="text-2xl font-bold text-gray-800 mb-3">🗣️ Report a Concern</h2>
-          <VoiceReportWidget onComplaintSubmitted={handleComplaintSubmitted} />
-          {ackCode && (
-            <div className="mt-4 bg-green-50 border border-green-200 rounded-xl p-4 flex flex-col items-center">
-              <span className="text-green-700 font-bold">
-                Your Report Acknowledgement Code:
-              </span>
-              <span className="text-lg font-mono tracking-wide text-green-600">{ackCode}</span>
-              <span className="text-xs text-gray-400 mt-2">
-                Please save this code to check your complaint status or reward follow-up.
-              </span>
-            </div>
-          )}
-        </section>
-        <section className="my-8">
-          {role === "officer" ? (
-            <EthicsOfficerDashboard
-              complaints={complaints}
-              assignCase={assignCase}
-              showControls={true}
-              onResolve={onResolve}
-              onEscalate={onEscalate}
-              onReward={onReward}
-              role={role}
-              currentUsername={currentUsername}
-              onUpdateNote={onUpdateNote}
-            />
-          ) : (
-            <InvestigatorDashboard
-              complaints={complaints}
-              showControls={false}
-              role={role}
-              onUpdateNote={onUpdateNote}
-              currentUsername={currentUsername}
-              assignCase={() => {}}
-              onResolve={() => {}}
-              onEscalate={() => {}}
-              onReward={() => {}}
-            />
-          )}
-        </section>
-      </main>
-
-      {showFollowup && (
-        <FollowupModal
-          open={showFollowup}
-          onClose={()=>setShowFollowup(false)}
-          complaints={complaints}
-        />
       )}
     </div>
   );
