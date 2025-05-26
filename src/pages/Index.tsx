@@ -65,6 +65,13 @@ export default function Index() {
       audioUrl: audioUrl || "",
       ackCode: ack,
       rewarded: false,
+
+      // Add required default properties
+      assignedTo: "",
+      notes: "",
+      auditTrail: [
+        { action: "Complaint submitted", timestamp: new Date().toISOString().slice(0, 16).replace("T", " ") },
+      ],
     };
     setComplaints((prev) => [...prev, newComplaint]);
     setAckCode(ack);

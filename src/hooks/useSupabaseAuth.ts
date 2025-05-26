@@ -37,14 +37,15 @@ export function useSupabaseAuth() {
 
   useEffect(() => {
     if (user) {
-      supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (data) setProfile(data as Profile);
-        });
+      // NO PROFILES TABLE YET: comment this out for now; re-enable when the table exists
+      // supabase
+      //   .from("profiles")
+      //   .select("*")
+      //   .eq("id", user.id)
+      //   .maybeSingle()
+      //   .then(({ data }) => {
+      //     if (data) setProfile(data as Profile);
+      //   });
       setView("profile");
     } else {
       setProfile(null);
