@@ -1,11 +1,11 @@
 
-// VAPI Widget — uses your agent, routes summary to parent, fallback to write
-
 import React, { useEffect, useRef, useState } from "react";
 import { CheckCircle, AlertCircle } from "lucide-react";
 
-const VAPI_AGENT_ID = "bb8029bb-dde6-485a-9c32-d41b684568ff";
-const VAPI_PUBLIC_KEY = "6b3e7486-6bd4-4521-b010-4d4ea7bf2f48";
+// VAPI keys provided by user
+const VAPI_AGENT_ID = "vapi";
+const VAPI_PUBLIC_KEY = "4669de51-f9ba-4e99-a9dd-e39279a6f510";
+// You can adjust VAPI_AGENT_ID if there's a specific agent id, else use "vapi"
 const VAPI_IFRAME_URL = `https://vapi.ai?demo=true&shareKey=${VAPI_PUBLIC_KEY}&assistantId=${VAPI_AGENT_ID}`;
 
 export default function VoiceReportWidget({ onComplaintSubmitted }) {
@@ -21,11 +21,15 @@ export default function VoiceReportWidget({ onComplaintSubmitted }) {
   useEffect(() => {
     function handleMessage(e) {
       if (e.data && typeof e.data === "object" && e.data.complaintSummary) {
+        console.log("[VAPI] Received complaint summary:", e.data); // DEBUG: Log data received from VAPI
         onComplaintSubmitted({
           summary: e.data.complaintSummary,
           transcript: e.data.complaintTranscript,
           category: e.data.tag || "general",
         });
+      } else {
+        // For troubleshooting: log all VAPI messages
+        console.log("[VAPI] Window message received:", e.data);
       }
     }
     window.addEventListener("message", handleMessage);

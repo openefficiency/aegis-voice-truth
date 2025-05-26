@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button";
 interface HeaderProps {
   onLogin: () => void;
   onFollowup: () => void;
+  isOfficerOrInvestigator?: boolean;
+  onVapiDashboard?: () => void;
 }
 
-export default function Header({ onLogin, onFollowup }: HeaderProps) {
+export default function Header({ onLogin, onFollowup, isOfficerOrInvestigator, onVapiDashboard }: HeaderProps) {
   return (
     <header className="flex items-center justify-between p-4 max-w-4xl mx-auto w-full">
       <div className="flex items-center gap-2">
@@ -17,6 +19,11 @@ export default function Header({ onLogin, onFollowup }: HeaderProps) {
         </span>
       </div>
       <div className="flex gap-2 items-center">
+        {isOfficerOrInvestigator && onVapiDashboard && (
+          <Button variant="link" onClick={onVapiDashboard}>
+            VAPI Dashboard
+          </Button>
+        )}
         <Button variant="outline" onClick={onLogin}>Team Aegis Login</Button>
         <Button variant="default" onClick={onFollowup}>Followup</Button>
       </div>

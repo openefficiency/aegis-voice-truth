@@ -44,7 +44,17 @@ export default function TeamAegisLoginModal({
       setOpen(false);
       toast({ title: "Logged in!", description: `Logged in as ${loginRole === "officer" ? "Ethics Officer" : "Investigator"}` });
     } else {
-      toast({ title: "Login failed", description: "Invalid credentials", variant: "destructive" });
+      // Improved error messaging
+      let reasons = [];
+      if (form.username.value !== user) reasons.push("username");
+      if (form.password.value !== pass) reasons.push("password");
+      toast({
+        title: "Login failed",
+        description:
+          `Invalid ${reasons.join(" and ")} for ${loginRole === "officer" ? "Ethics Officer" : "Investigator"}` +
+          ". Expected demo credentials. (See documentation if unsure.)",
+        variant: "destructive"
+      });
     }
   }
 
