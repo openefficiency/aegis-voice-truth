@@ -1,5 +1,6 @@
 
 import { useState, useRef, useEffect } from 'react';
+import { ScriptLoader } from '@/utils/scriptLoader';
 
 interface UseVapiConnectionProps {
   onComplaintSubmitted: (complaint: any) => void;
@@ -34,28 +35,32 @@ export function useVapiConnection({ onComplaintSubmitted }: UseVapiConnectionPro
 
     if (!checkSupport()) return;
 
-    // Load Vapi SDK
-    const loadVapiSDK = () => {
-      const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/@vapi-ai/web-sdk@latest/dist/index.js';
-      script.onload = () => {
+    // Load Vapi SDK with multiple CDN fallbacks
+    const loadVapiSDK = async () => {
+      const cdnSources = [
+        'https://unpkg.com/@vapi-ai/web-sdk@latest/dist/index.js',
+        'https://cdn.jsdelivr.net/npm/@vapi-ai/web-sdk@latest/dist/index.js',
+        'https://cdn.jsdelivr.net/npm/@vapi-ai/web-sdk@0.5.0/dist/index.js'
+      ];
+
+      try {
+        console.log('[Vapi] Loading SDK from CDN...');
+        await ScriptLoader.loadScript(cdnSources);
+        
+        if (!window.Vapi) {
+          throw new Error('Vapi SDK not available after loading');
+        }
+        
         console.log('[Vapi] SDK loaded successfully');
         setVapiLoaded(true);
         initializeVapi();
-      };
-      script.onerror = () => {
-        console.error('[Vapi] Failed to load SDK');
+      } catch (error) {
+        console.error('[Vapi] Failed to load SDK from all sources:', error);
         setIsSupported(false);
-      };
-      document.head.appendChild(script);
+      }
     };
 
     const initializeVapi = () => {
-      if (!window.Vapi) {
-        console.error('[Vapi] SDK not available');
-        return;
-      }
-
       try {
         vapiRef.current = new window.Vapi('4669de51-f9ba-4e99-a9dd-e39279a6f510');
         
@@ -91,7 +96,6 @@ export function useVapiConnection({ onComplaintSubmitted }: UseVapiConnectionPro
               setTranscript(message.transcript);
             } else if (message.transcriptType === 'final') {
               setTranscript(message.transcript);
-              // Check if this seems like a complete complaint
               if (message.transcript && message.transcript.length > 50) {
                 setTimeout(() => {
                   onComplaintSubmitted({
@@ -105,10 +109,6 @@ export function useVapiConnection({ onComplaintSubmitted }: UseVapiConnectionPro
                 }, 2000);
               }
             }
-          }
-
-          if (message.type === 'function-call') {
-            console.log('[Vapi] Function call:', message);
           }
         });
 
