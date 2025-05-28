@@ -1,6 +1,6 @@
 
 import React from "react";
-import VoiceReportWidget from "@/components/VoiceReportWidget";
+import WebSpeechVoiceWidget from "@/components/WebSpeechVoiceWidget";
 import { Button } from "@/components/ui/button";
 
 interface ReportSectionProps {
@@ -16,7 +16,7 @@ export default function ReportSection({ onWrite, ackCode, handleComplaintSubmitt
         <h1 className="text-2xl font-bold text-center mb-4 text-blue-900">
           Whistleblowing. Made Effortless.
         </h1>
-        <VoiceReportWidget onComplaintSubmitted={handleComplaintSubmitted} />
+        <WebSpeechVoiceWidget onComplaintSubmitted={handleComplaintSubmitted} />
         <div className="relative flex items-center my-4">
           <div className="flex-grow border-t border-gray-300" />
           <span className="mx-3 text-gray-500 bg-gray-50 px-2">or</span>
