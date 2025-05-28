@@ -1,0 +1,266 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vapi Voice Interface</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .voice-container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+        }
+        
+        .voice-button {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            box-shadow: 0 4px 15px rgba(238, 90, 82, 0.4);
+        }
+        
+        .voice-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(238, 90, 82, 0.6);
+        }
+        
+        .voice-button.active {
+            background: linear-gradient(135deg, #51cf66, #40c057);
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        .status {
+            margin-top: 15px;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .status.idle {
+            background: #e9ecef;
+            color: #495057;
+        }
+        
+        .status.listening {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status.processing {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .transcript {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            min-height: 40px;
+            text-align: left;
+            font-style: italic;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="voice-container">
+        <button id="voiceButton" class="voice-button">🎤</button>
+        <div id="status" class="status idle">Press to start voice report</div>
+        <div id="transcript" class="transcript">Your voice transcript will appear here...</div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@vapi-ai/web-sdk@latest/dist/index.js"></script>
+    <script>
+        console.log('[VAPI] Loading Vapi SDK...');
+        
+        const VAPI_PUBLIC_KEY = '4669de51-f9ba-4e99-a9dd-e39279a6f510';
+        const VAPI_AGENT_ID = 'bb8029bb-dde6-485a-9c32-d41b684568ff';
+        
+        let vapi;
+        let isCallActive = false;
+        
+        const voiceButton = document.getElementById('voiceButton');
+        const statusDiv = document.getElementById('status');
+        const transcriptDiv = document.getElementById('transcript');
+        
+        function updateStatus(status, message) {
+            statusDiv.className = `status ${status}`;
+            statusDiv.textContent = message;
+            console.log(`[VAPI] Status: ${status} - ${message}`);
+        }
+        
+        function updateTranscript(text) {
+            transcriptDiv.textContent = text;
+            console.log(`[VAPI] Transcript: ${text}`);
+        }
+        
+        // Initialize Vapi when SDK is loaded
+        function initializeVapi() {
+            try {
+                console.log('[VAPI] Initializing Vapi with key:', VAPI_PUBLIC_KEY);
+                vapi = new window.Vapi(VAPI_PUBLIC_KEY);
+                
+                // Event listeners
+                vapi.on('call-start', () => {
+                    console.log('[VAPI] Call started');
+                    isCallActive = true;
+                    voiceButton.classList.add('active');
+                    voiceButton.textContent = '🛑';
+                    updateStatus('listening', 'Listening... Click to stop');
+                });
+                
+                vapi.on('call-end', () => {
+                    console.log('[VAPI] Call ended');
+                    isCallActive = false;
+                    voiceButton.classList.remove('active');
+                    voiceButton.textContent = '🎤';
+                    updateStatus('idle', 'Press to start voice report');
+                });
+                
+                vapi.on('speech-start', () => {
+                    console.log('[VAPI] Speech started');
+                    updateStatus('listening', 'Listening...');
+                });
+                
+                vapi.on('speech-end', () => {
+                    console.log('[VAPI] Speech ended');
+                    updateStatus('processing', 'Processing...');
+                });
+                
+                vapi.on('message', (message) => {
+                    console.log('[VAPI] Message received:', message);
+                    
+                    if (message.type === 'transcript') {
+                        updateTranscript(message.transcript || 'Processing your voice...');
+                    }
+                    
+                    if (message.type === 'function-call' || message.type === 'end-of-call-report') {
+                        // Send complaint data to parent window
+                        const complaintData = {
+                            type: 'vapi-complaint',
+                            summary: message.summary || transcriptDiv.textContent,
+                            transcript: transcriptDiv.textContent,
+                            category: message.category || 'general',
+                            timestamp: new Date().toISOString()
+                        };
+                        
+                        console.log('[VAPI] Sending complaint to parent:', complaintData);
+                        window.parent.postMessage(complaintData, '*');
+                        
+                        updateStatus('idle', 'Report submitted! Press to start another');
+                        updateTranscript('Report submitted successfully!');
+                    }
+                });
+                
+                vapi.on('error', (error) => {
+                    console.error('[VAPI] Error:', error);
+                    updateStatus('error', 'Error occurred. Please try again.');
+                    isCallActive = false;
+                    voiceButton.classList.remove('active');
+                    voiceButton.textContent = '🎤';
+                });
+                
+                updateStatus('idle', 'Ready! Press to start voice report');
+                console.log('[VAPI] Initialization complete');
+                
+            } catch (error) {
+                console.error('[VAPI] Initialization error:', error);
+                updateStatus('error', 'Failed to initialize voice service');
+            }
+        }
+        
+        // Button click handler
+        voiceButton.addEventListener('click', async () => {
+            if (!vapi) {
+                updateStatus('error', 'Voice service not ready');
+                return;
+            }
+            
+            try {
+                if (isCallActive) {
+                    console.log('[VAPI] Stopping call...');
+                    await vapi.stop();
+                } else {
+                    console.log('[VAPI] Starting call with agent:', VAPI_AGENT_ID);
+                    updateStatus('processing', 'Connecting...');
+                    
+                    await vapi.start({
+                        assistantId: VAPI_AGENT_ID,
+                        assistant: {
+                            model: {
+                                provider: 'openai',
+                                model: 'gpt-3.5-turbo'
+                            },
+                            voice: {
+                                provider: 'elevenlabs',
+                                voiceId: 'pNInz6obpgDQGcFmaJgB'
+                            },
+                            firstMessage: 'Hello! I\'m here to help you submit a whistleblower report. Please describe your concern in detail.',
+                            systemPrompt: 'You are a confidential whistleblower reporting assistant. Listen carefully to the user\'s concern, ask clarifying questions if needed, and help them create a clear, detailed report. Keep the conversation professional and supportive.'
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('[VAPI] Call error:', error);
+                updateStatus('error', 'Connection failed. Please try again.');
+                isCallActive = false;
+                voiceButton.classList.remove('active');
+                voiceButton.textContent = '🎤';
+            }
+        });
+        
+        // Initialize when SDK is loaded
+        if (window.Vapi) {
+            initializeVapi();
+        } else {
+            // Wait for SDK to load
+            window.addEventListener('load', () => {
+                setTimeout(initializeVapi, 100);
+            });
+        }
+        
+        // Send ready message to parent
+        window.addEventListener('load', () => {
+            window.parent.postMessage({ type: 'vapi-ready' }, '*');
+        });
+    </script>
+</body>
+</html>
